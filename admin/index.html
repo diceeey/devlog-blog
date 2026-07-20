@@ -50,6 +50,8 @@
     .hint{font-size:.7rem;color:var(--muted);margin-top:.3rem}
     .logout-link{background:none;border:none;color:var(--muted);font-size:.78rem;cursor:pointer;padding:.35rem .5rem;border-radius:6px}
     .logout-link:hover{color:var(--red)}
+    .img-upload-label{display:block;width:100%;padding:.65rem;background:var(--bg);border:1px dashed var(--border);border-radius:8px;text-align:center;font-size:.8rem;color:var(--muted);cursor:pointer;transition:all .2s}
+    .img-upload-label:hover{border-color:var(--accent);color:var(--accent)}
 
     /* EasyMDE dark override */
     .CodeMirror{background:var(--bg)!important;color:var(--txt)!important;border-color:var(--border)!important;border-radius:0 0 8px 8px!important}
@@ -120,6 +122,12 @@
         <p class="hint">Comma-separated</p>
       </div>
       <div class="sb-box">
+        <h3>Featured Image</h3>
+        <label for="img-file" class="img-upload-label" id="img-label">Click to upload image</label>
+        <input type="file" id="img-file" accept="image/*" style="display:none" onchange="uploadImage(this)"/>
+        <p class="hint" id="img-hint">JPG, PNG, GIF — uploads to repo</p>
+      </div>
+      <div class="sb-box">
         <h3>About</h3>
         <p style="font-size:.8rem;color:var(--muted);line-height:1.6">Posts go live on GitHub and auto-deploy via Cloudflare in ~30 seconds.</p>
       </div>
@@ -152,6 +160,7 @@
 </div>
 
 <script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
   let TOKEN = sessionStorage.getItem('dl_tok');
   let mde = null;
@@ -209,9 +218,11 @@
     const title   = document.getElementById('post-title').value.trim();
     const excerpt = document.getElementById('post-excerpt').value.trim();
     const tags    = document.getElementById('post-tags').value.split(',').map(t=>t.trim()).filter(Boolean);
-    const body    = mde ? mde.value().trim() : '';
+    const md      = mde ? mde.value().trim() : '';
     if (!title) { document.getElementById('post-title').focus(); return; }
-    if (!body)  { setBadge('err','Body is empty'); return; }
+    if (!md)    { setBadge('err','Body is empty'); return; }
+    // convert markdown → HTML before sending
+    const body = marked.parse(md);
     const btn = document.getElementById('pub-btn');
     btn.disabled = true; setBadge('spin','Publishing…');
     try {
@@ -219,11 +230,50 @@
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'Failed');
       setBadge('ok','✓ Live in ~30s');
+      clearEditor();
     } catch(e) {
       setBadge('err', e.message);
     } finally {
       btn.disabled = false;
     }
+  }
+
+  let uploadedImageUrl = null;
+
+  async function uploadImage(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const label = document.getElementById('img-label');
+    const hint  = document.getElementById('img-hint');
+    label.textContent = 'Uploading…';
+    try {
+      const b64 = await toBase64(file);
+      const filename = `images/${Date.now()}-${file.name.replace(/[^a-z0-9._-]/gi,'_')}`;
+      const r = await fetch('/api/upload-image', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({token: TOKEN, filename, content: b64})
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Upload failed');
+      uploadedImageUrl = d.url;
+      // insert into editor
+      if (mde) mde.value(mde.value() + `\n\n![${file.name}](${d.url})\n`);
+      label.textContent = '✓ ' + file.name;
+      hint.textContent = 'Image inserted into post';
+    } catch(e) {
+      label.textContent = 'Click to upload image';
+      hint.textContent = '✗ ' + e.message;
+    }
+  }
+
+  function toBase64(file) {
+    return new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result.split(',')[1]);
+      r.onerror = rej;
+      r.readAsDataURL(file);
+    });
   }
 
   function setBadge(type, msg) {
