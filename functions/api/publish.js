@@ -1,4 +1,22 @@
-import { verifyToken } from './auth.js';
+function verifyToken(token, env) {
+  try {
+    const [data, sig] = token.split('.');
+    if (btoa((env.JWT_SECRET || 'devlog') + ':' + data) !== sig) return false;
+    const { exp } = JSON.parse(atob(data));
+    return Date.now() < exp;
+  } catch { return false; }
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function json(body, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
 
 export async function onRequestPost({ request, env }) {
   const { token, title, excerpt, tags, body } = await request.json().catch(() => ({}));
@@ -11,6 +29,7 @@ export async function onRequestPost({ request, env }) {
   const path = `_posts/${date}-${slug}.html`;
 
   const tagHtml = (tags || []).map(t => `<span class="post-tag">${esc(t)}</span>`).join(' ');
+
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -56,8 +75,15 @@ export async function onRequestPost({ request, env }) {
     `https://api.github.com/repos/diceeey/devlog-blog/contents/${path}`,
     {
       method: 'PUT',
-      headers: { Authorization: `token ${env.GITHUB_TOKEN}`, 'Content-Type': 'application/json', 'User-Agent': 'DevLog-CMS' },
-      body: JSON.stringify({ message: `New post: ${title}`, content: btoa(unescape(encodeURIComponent(html))) }),
+      headers: {
+        Authorization: `token ${env.GITHUB_TOKEN}`,
+        'Content-Type': 'application/json',
+        'User-Agent': 'DevLog-CMS',
+      },
+      body: JSON.stringify({
+        message: `New post: ${title}`,
+        content: btoa(unescape(encodeURIComponent(html))),
+      }),
     }
   );
 
@@ -67,9 +93,4 @@ export async function onRequestPost({ request, env }) {
   }
 
   return json({ success: true, slug, path });
-}
-
-function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function json(body, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 }

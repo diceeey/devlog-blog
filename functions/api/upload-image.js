@@ -1,4 +1,18 @@
-import { verifyToken } from './auth.js';
+function verifyToken(token, env) {
+  try {
+    const [data, sig] = token.split('.');
+    if (btoa((env.JWT_SECRET || 'devlog') + ':' + data) !== sig) return false;
+    const { exp } = JSON.parse(atob(data));
+    return Date.now() < exp;
+  } catch { return false; }
+}
+
+function json(body, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
 
 export async function onRequestPost({ request, env }) {
   const { token, filename, content } = await request.json().catch(() => ({}));
@@ -17,7 +31,7 @@ export async function onRequestPost({ request, env }) {
       },
       body: JSON.stringify({
         message: `Upload image: ${filename}`,
-        content, // already base64
+        content,
       }),
     }
   );
@@ -27,13 +41,5 @@ export async function onRequestPost({ request, env }) {
     return json({ error: e.message || 'GitHub error' }, 502);
   }
 
-  const url = `https://raw.githubusercontent.com/diceeey/devlog-blog/main/${filename}`;
-  return json({ url });
-}
-
-function json(body, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  });
+  return json({ url: `https://raw.githubusercontent.com/diceeey/devlog-blog/main/${filename}` });
 }
