@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>DevLog Admin</title>
+  <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css"/>
+  <style>
+    :root{--bg:#0d1117;--bg2:#161b22;--card:#1c2128;--border:#30363d;--txt:#e6edf3;--muted:#8b949e;--accent:#58a6ff;--accent2:#79b8ff;--green:#3fb950;--red:#f85149}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;display:flex;align-items:center;justify-content:center}
+    body.in{align-items:stretch;display:block}
+
+    /* LOGIN */
+    #login{width:100%;max-width:380px;padding:1.5rem}
+    .login-logo{text-align:center;margin-bottom:2rem}
+    .login-logo h1{font-size:1.8rem;font-weight:700}.login-logo h1 span{color:var(--accent)}
+    .login-logo p{color:var(--muted);font-size:.88rem;margin-top:.3rem}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:2rem}
+    .card h2{font-size:1.05rem;font-weight:600;margin-bottom:1.5rem}
+    label{display:block;font-size:.78rem;color:var(--muted);font-weight:500;margin-bottom:.4rem}
+    input[type=password],input[type=text],textarea{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:.65rem .9rem;color:var(--txt);font-size:.9rem;outline:none;transition:border-color .2s;font-family:inherit}
+    input[type=password]:focus,input[type=text]:focus,textarea:focus{border-color:var(--accent)}
+    .field{margin-bottom:1.1rem}
+    .btn-full{width:100%;background:var(--accent);color:#0d1117;border:none;border-radius:8px;padding:.72rem;font-size:.92rem;font-weight:600;cursor:pointer;transition:background .2s}
+    .btn-full:hover{background:var(--accent2)}.btn-full:disabled{opacity:.5;cursor:not-allowed}
+    .err{color:var(--red);font-size:.8rem;margin-top:.7rem;text-align:center;min-height:1.2em}
+
+    /* DASHBOARD */
+    #dash{display:none}
+    .dash-top{background:var(--bg2);border-bottom:1px solid var(--border);padding:.8rem 1.5rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+    .d-logo{font-size:1.15rem;font-weight:700}.d-logo span{color:var(--accent)}
+    .d-actions{display:flex;gap:.6rem;align-items:center}
+    .btn-sm{padding:.38rem .85rem;border-radius:6px;font-size:.8rem;font-weight:600;cursor:pointer;border:none;transition:all .2s}
+    .btn-pub{background:var(--accent);color:#0d1117}.btn-pub:hover{background:var(--accent2)}.btn-pub:disabled{opacity:.5;cursor:not-allowed}
+    .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted)}.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+    .badge{font-size:.75rem;padding:.22rem .65rem;border-radius:999px;display:none}
+    .badge.ok{background:rgba(63,185,80,.15);color:var(--green);display:inline-block}
+    .badge.err{background:rgba(248,81,73,.15);color:var(--red);display:inline-block}
+    .badge.spin{background:rgba(88,166,255,.15);color:var(--accent);display:inline-block}
+
+    .dash-body{display:grid;grid-template-columns:1fr 300px;min-height:calc(100vh - 57px)}
+    .editor-col{padding:2rem;border-right:1px solid var(--border)}
+    #post-title{width:100%;background:transparent;border:none;outline:none;font-size:1.7rem;font-weight:700;color:var(--txt);margin-bottom:1.5rem;font-family:inherit}
+    #post-title::placeholder{color:var(--border)}
+    .sidebar{background:var(--bg2);padding:1.25rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto}
+    .sb-box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1.1rem}
+    .sb-box h3{font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:.85rem}
+    textarea.excerpt{min-height:75px;resize:vertical}
+    .hint{font-size:.7rem;color:var(--muted);margin-top:.3rem}
+    .logout-link{background:none;border:none;color:var(--muted);font-size:.78rem;cursor:pointer;padding:.35rem .5rem;border-radius:6px}
+    .logout-link:hover{color:var(--red)}
+
+    /* EasyMDE dark override */
+    .CodeMirror{background:var(--bg)!important;color:var(--txt)!important;border-color:var(--border)!important;border-radius:0 0 8px 8px!important}
+    .editor-toolbar{background:var(--bg2)!important;border-color:var(--border)!important;border-radius:8px 8px 0 0!important}
+    .editor-toolbar button{color:var(--muted)!important}.editor-toolbar button:hover{background:var(--card)!important;color:var(--txt)!important}
+    .editor-preview{background:var(--bg)!important;color:var(--txt)!important}
+    .CodeMirror-scroll{min-height:400px}
+
+    /* change-password panel */
+    #pw-panel{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center}
+    #pw-panel.open{display:flex}
+    .pw-modal{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:2rem;width:100%;max-width:360px}
+    .pw-modal h2{font-size:1.05rem;font-weight:600;margin-bottom:1.25rem}
+    .modal-actions{display:flex;gap:.6rem;margin-top:1.1rem}
+    .btn-cancel{flex:1;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:.65rem;font-size:.88rem;font-weight:600;cursor:pointer}
+    .btn-cancel:hover{border-color:var(--red);color:var(--red)}
+    .btn-save{flex:2;background:var(--accent);color:#0d1117;border:none;border-radius:8px;padding:.65rem;font-size:.88rem;font-weight:600;cursor:pointer}
+    .btn-save:hover{background:var(--accent2)}.btn-save:disabled{opacity:.5;cursor:not-allowed}
+
+    @media(max-width:768px){.dash-body{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+
+<!-- ══ LOGIN ══ -->
+<div id="login">
+  <div class="login-logo">
+    <h1><span>{</span>DevLog<span>}</span></h1>
+    <p>Admin Dashboard</p>
+  </div>
+  <div class="card">
+    <h2>Sign in</h2>
+    <div class="field">
+      <label for="pw">Password</label>
+      <input type="password" id="pw" placeholder="Enter admin password" autocomplete="current-password"/>
+    </div>
+    <button class="btn-full" id="login-btn" onclick="doLogin()">Sign In</button>
+    <div class="err" id="login-err"></div>
+  </div>
+</div>
+
+<!-- ══ DASHBOARD ══ -->
+<div id="dash">
+  <div class="dash-top">
+    <div class="d-logo"><span>{</span>DevLog<span>}</span> Admin</div>
+    <div class="d-actions">
+      <span class="badge" id="badge"></span>
+      <button class="btn-sm btn-ghost" onclick="clearEditor()">+ New</button>
+      <button class="btn-sm btn-pub" id="pub-btn" onclick="publish()">Publish</button>
+      <button class="logout-link" onclick="openPwModal()">Change password</button>
+      <button class="logout-link" onclick="logout()">Sign out</button>
+    </div>
+  </div>
+
+  <div class="dash-body">
+    <div class="editor-col">
+      <input id="post-title" type="text" placeholder="Post title…"/>
+      <textarea id="mde"></textarea>
+    </div>
+    <aside class="sidebar">
+      <div class="sb-box">
+        <h3>Excerpt</h3>
+        <textarea class="excerpt" id="post-excerpt" placeholder="Short summary shown on the home page…"></textarea>
+      </div>
+      <div class="sb-box">
+        <h3>Tags</h3>
+        <input type="text" id="post-tags" placeholder="JavaScript, Rust, DevOps"/>
+        <p class="hint">Comma-separated</p>
+      </div>
+      <div class="sb-box">
+        <h3>About</h3>
+        <p style="font-size:.8rem;color:var(--muted);line-height:1.6">Posts go live on GitHub and auto-deploy via Cloudflare in ~30 seconds.</p>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- ══ CHANGE PASSWORD MODAL ══ -->
+<div id="pw-panel">
+  <div class="pw-modal">
+    <h2>Change password</h2>
+    <div class="field">
+      <label>Current password</label>
+      <input type="password" id="pw-old" placeholder="Current password"/>
+    </div>
+    <div class="field">
+      <label>New password</label>
+      <input type="password" id="pw-new" placeholder="New password (min 8 chars)"/>
+    </div>
+    <div class="field">
+      <label>Confirm new password</label>
+      <input type="password" id="pw-confirm" placeholder="Repeat new password"/>
+    </div>
+    <div class="err" id="pw-err"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closePwModal()">Cancel</button>
+      <button class="btn-save" id="pw-save-btn" onclick="changePassword()">Update password</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
+<script>
+  let TOKEN = sessionStorage.getItem('dl_tok');
+  let mde = null;
+
+  // boot
+  if (TOKEN) showDash();
+
+  // login
+  document.getElementById('pw').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+
+  async function doLogin() {
+    const pw  = document.getElementById('pw').value;
+    const btn = document.getElementById('login-btn');
+    const err = document.getElementById('login-err');
+    if (!pw) return;
+    btn.disabled = true; btn.textContent = 'Signing in…'; err.textContent = '';
+    try {
+      const r = await fetch('/api/auth', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({password:pw}) });
+      const d = await r.json();
+      if (!r.ok || !d.token) throw new Error(d.error || 'Wrong password');
+      TOKEN = d.token;
+      sessionStorage.setItem('dl_tok', TOKEN);
+      showDash();
+    } catch(e) {
+      err.textContent = e.message;
+    } finally {
+      btn.disabled = false; btn.textContent = 'Sign In';
+    }
+  }
+
+  function showDash() {
+    document.getElementById('login').style.display = 'none';
+    document.getElementById('dash').style.display  = 'block';
+    document.body.classList.add('in');
+    if (!mde) mde = new EasyMDE({ element: document.getElementById('mde'), spellChecker:false, autosave:{enabled:false}, placeholder:'Write your post in Markdown…', toolbar:['bold','italic','heading','|','quote','code','|','unordered-list','ordered-list','|','link','|','preview','side-by-side'] });
+  }
+
+  function logout() {
+    sessionStorage.removeItem('dl_tok'); TOKEN = null;
+    document.getElementById('login').style.display = '';
+    document.getElementById('dash').style.display  = 'none';
+    document.body.classList.remove('in');
+    document.getElementById('pw').value = '';
+  }
+
+  function clearEditor() {
+    document.getElementById('post-title').value   = '';
+    document.getElementById('post-excerpt').value = '';
+    document.getElementById('post-tags').value    = '';
+    if (mde) mde.value('');
+    setBadge('','');
+  }
+
+  async function publish() {
+    const title   = document.getElementById('post-title').value.trim();
+    const excerpt = document.getElementById('post-excerpt').value.trim();
+    const tags    = document.getElementById('post-tags').value.split(',').map(t=>t.trim()).filter(Boolean);
+    const body    = mde ? mde.value().trim() : '';
+    if (!title) { document.getElementById('post-title').focus(); return; }
+    if (!body)  { setBadge('err','Body is empty'); return; }
+    const btn = document.getElementById('pub-btn');
+    btn.disabled = true; setBadge('spin','Publishing…');
+    try {
+      const r = await fetch('/api/publish', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({token:TOKEN,title,excerpt,tags,body}) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Failed');
+      setBadge('ok','✓ Live in ~30s');
+    } catch(e) {
+      setBadge('err', e.message);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function setBadge(type, msg) {
+    const b = document.getElementById('badge');
+    b.className = 'badge ' + type;
+    b.textContent = msg;
+    if (!type) b.style.display = 'none';
+  }
+
+  // Change password
+  function openPwModal()  { document.getElementById('pw-panel').classList.add('open'); document.getElementById('pw-old').focus(); }
+  function closePwModal() { document.getElementById('pw-panel').classList.remove('open'); ['pw-old','pw-new','pw-confirm'].forEach(id=>document.getElementById(id).value=''); document.getElementById('pw-err').textContent=''; }
+
+  async function changePassword() {
+    const oldPw  = document.getElementById('pw-old').value;
+    const newPw  = document.getElementById('pw-new').value;
+    const confirm= document.getElementById('pw-confirm').value;
+    const err    = document.getElementById('pw-err');
+    const btn    = document.getElementById('pw-save-btn');
+    err.textContent = '';
+    if (!oldPw || !newPw) { err.textContent = 'All fields required'; return; }
+    if (newPw.length < 8) { err.textContent = 'New password must be at least 8 characters'; return; }
+    if (newPw !== confirm) { err.textContent = 'Passwords do not match'; return; }
+    btn.disabled = true; btn.textContent = 'Updating…';
+    try {
+      const r = await fetch('/api/change-password', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({token:TOKEN, oldPassword:oldPw, newPassword:newPw}) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Failed');
+      // Update session token
+      TOKEN = d.token;
+      sessionStorage.setItem('dl_tok', TOKEN);
+      closePwModal();
+      setBadge('ok','Password updated');
+    } catch(e) {
+      err.textContent = e.message;
+    } finally {
+      btn.disabled = false; btn.textContent = 'Update password';
+    }
+  }
+</script>
+</body>
+</html>
