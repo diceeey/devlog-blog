@@ -162,6 +162,7 @@
 <script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
+  const API = 'https://devlog-api.dicedblak.workers.dev';
   let TOKEN = sessionStorage.getItem('dl_tok');
   let mde = null;
 
@@ -178,7 +179,7 @@
     if (!pw) return;
     btn.disabled = true; btn.textContent = 'Signing in…'; err.textContent = '';
     try {
-      const r = await fetch('/api/auth', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({password:pw}) });
+      const r = await fetch(API+'/api/auth', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({password:pw}) });
       const d = await r.json();
       if (!r.ok || !d.token) throw new Error(d.error || 'Wrong password');
       TOKEN = d.token;
@@ -226,7 +227,7 @@
     const btn = document.getElementById('pub-btn');
     btn.disabled = true; setBadge('spin','Publishing…');
     try {
-      const r = await fetch('/api/publish', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({token:TOKEN,title,excerpt,tags,body}) });
+      const r = await fetch(API+'/api/publish', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({token:TOKEN,title,excerpt,tags,body}) });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'Failed');
       setBadge('ok','✓ Live in ~30s');
@@ -249,7 +250,7 @@
     try {
       const b64 = await toBase64(file);
       const filename = `images/${Date.now()}-${file.name.replace(/[^a-z0-9._-]/gi,'_')}`;
-      const r = await fetch('/api/upload-image', {
+      const r = await fetch(API+'/api/upload-image', {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
         body: JSON.stringify({token: TOKEN, filename, content: b64})
@@ -299,7 +300,7 @@
     if (newPw !== confirm) { err.textContent = 'Passwords do not match'; return; }
     btn.disabled = true; btn.textContent = 'Updating…';
     try {
-      const r = await fetch('/api/change-password', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({token:TOKEN, oldPassword:oldPw, newPassword:newPw}) });
+      const r = await fetch(API+'/api/change-password', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({token:TOKEN, oldPassword:oldPw, newPassword:newPw}) });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'Failed');
       // Update session token
